@@ -2,7 +2,7 @@
     <div>
         <el-row justify="center" type="flex">
             <el-col :span="14">
-                <gmap-map :center=center :zoom="9" map-type-id="terrain" @click="mapClicked" @dblclick="" style="width: 100%; height: 80vh;">
+                <gmap-map :center=center ref="map" :zoom="9" map-type-id="terrain" @click="mapClicked" @dblclick="" style="width: 100%; height: 80vh;">
                     <gmap-marker :key="m.id" v-for="(m, index) in markers" :position="m.position" :clickable="true" :draggable="(index == editingMarker) && editMode" @click="markerClicked(m)">
                         <gmap-info-window :opened="(index == editingMarker) && (generateInfo(index) != '')" :content="generateInfo(index)"></gmap-info-window>
                     </gmap-marker>
@@ -17,16 +17,19 @@
                     <el-form-item label="Описание метки: ">
                         <el-input v-model.trim.lazy="markers[editingMarker].desc" :disabled="!editMode"></el-input>
                     </el-form-item>
-                    <el-form-item>
+                    <el-form-item v-if="editMode">
                         <el-button @click="removeMarker">удалить метку</el-button>
                     </el-form-item>
                 </el-form>
             </el-col>
         </el-row>
+        <button @click="panMap"></button>
     </div>
 </template>
 
 <script>
+  /* eslint-disable no-undef */
+
   import * as VueGoogleMaps from 'vue2-google-maps'
 
   export default {
@@ -51,6 +54,10 @@
     },
     created: function () {
       this.markers = this.$ls.get('markers', [])
+      if (!this.markers.length) this.lastId = 0
+    },
+    mounted: function () {
+      if (this.markers.length > 2) this.panMap()
     },
     components: {
       'gmap-map': VueGoogleMaps.Map,
@@ -58,6 +65,21 @@
       'gmap-info-window': VueGoogleMaps.InfoWindow
     },
     methods: {
+      panMap () {
+        var map = this.$refs.map
+        map.$mapCreated.then(() => {
+          var bounds = new google.maps.LatLngBounds()
+          bounds.extend(this.center)
+          this.markers.forEach(item => {
+            let latlng = new google.maps.LatLng({
+              lat: item.position.lat,
+              lng: item.position.lng
+            })
+            bounds.extend(latlng)
+          })
+          map.fitBounds(bounds)
+        })
+      },
       mapClicked (mouseArgs) {
         let marker
         if (this.editMode) {
