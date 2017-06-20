@@ -2,20 +2,23 @@
     <div>
         <el-row justify="center" type="flex">
             <el-col :span="14">
-                <gmap-map :center=center :zoom="9" map-type-id="terrain" :resize-bus="customBus" @click="mapClicked" @dblclick="" style="width: 100%; height: 80vh;">
+                <gmap-map :center=center :zoom="9" map-type-id="terrain" @click="mapClicked" @dblclick="" style="width: 100%; height: 80vh;">
                     <gmap-marker :key="m.id" v-for="(m, index) in markers" :position="m.position" :clickable="true" :draggable="(index == editingMarker) && editMode" @click="markerClicked(m)">
-                        <gmap-info-window :opened="(index == editingMarker) && (m.ifw2text != '')" :content="generateInfo(index)"></gmap-info-window>
+                        <gmap-info-window :opened="(index == editingMarker) && (generateInfo(index) != '')" :content="generateInfo(index)"></gmap-info-window>
                     </gmap-marker>
                 </gmap-map>
             </el-col>
             <el-col :span="4">
-                <el-switch v-model="editMode" on-text="Просмотр" off-text="Правка" width="100" @click="editMode = !editMode"></el-switch>
+                <el-switch v-model="editMode" on-text="Просмотр" off-text="Правка" :width="100" @click="editMode = !editMode"></el-switch>
                 <el-form ref="form" v-if="showForm">
                     <el-form-item label="Название метки: ">
                         <el-input v-model.trim="markers[editingMarker].title" :disabled="!editMode"></el-input>
                     </el-form-item>
                     <el-form-item label="Описание метки: ">
                         <el-input v-model.trim.lazy="markers[editingMarker].desc" :disabled="!editMode"></el-input>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button @click="removeMarker">удалить метку</el-button>
                     </el-form-item>
                 </el-form>
             </el-col>
@@ -25,7 +28,6 @@
 
 <script>
   import * as VueGoogleMaps from 'vue2-google-maps'
-  import Vue from 'vue'
 
   export default {
     name: 'hello',
@@ -36,9 +38,19 @@
         markers: [],
         editingMarker: -1,
         lastId: 0,
-        showForm: false,
-        customBus: new Vue()
+        showForm: false
       }
+    },
+    watch: {
+      markers: function (val) {
+        this.$ls.set('markers', val)
+      },
+      lastId: function (val) {
+        this.$ls.set('lastId', val)
+      }
+    },
+    created: function () {
+      this.markers = this.$ls.get('markers', [])
     },
     components: {
       'gmap-map': VueGoogleMaps.Map,
@@ -60,7 +72,7 @@
       markerClicked (marker) {
         this.showEditForm(marker.id)
       },
-      addMarker: function addMarker (lat, lng, draggable) {
+      addMarker (lat, lng, draggable) {
         this.lastId++
         this.markers.push({
           id: this.lastId,
@@ -77,18 +89,26 @@
         })
         return this.markers[this.markers.length - 1]
       },
-      showEditForm: function (id) {
+      removeMarker () {
+        this.showForm = false
+        this.markers.splice(this.editingMarker, 1)
+      },
+      showEditForm (id) {
         this.showForm = true
         this.editingMarker = this.markers.findIndex(function (elem) {
           return elem.id === id
         })
       },
       generateInfo: function (index) {
+        let str
         if (!this.editMode) {
-          return '<b>' + this.markers[index].title + '</b><br>' + this.markers[index].desc
+          str = '<b>' + this.markers[index].title + '</b><br/>' + this.markers[index].desc
         } else {
-          return '<b>' + this.markers[index].title + '</b>'
+          str = '<b>' + this.markers[index].title + '</b>'
         }
+        str = str.replace(/^(<b><\/b>)/, '')
+        str = str.replace(/(<br\/>)$/, '')
+        return str
       }
     }
   }

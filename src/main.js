@@ -6,6 +6,7 @@ import router from './router'
 
 import * as VueGoogleMaps from 'vue2-google-maps'
 import Element from 'element-ui'
+import VueLocalStorage from 'vue-ls'
 
 Vue.use(Element)
 
@@ -15,6 +16,10 @@ Vue.use(VueGoogleMaps, {
     v: '3.29',
     installComponents: false
   }
+})
+
+Vue.use(VueLocalStorage, {
+  namespace: 'geotest'
 })
 
 Vue.config.productionTip = false
