@@ -3,7 +3,7 @@
         <el-row justify="center" type="flex">
             <el-col :span="14">
                 <gmap-map :center=center ref="map" :zoom="9" map-type-id="terrain" @click="mapClicked" @dblclick="" style="width: 100%; height: 80vh;">
-                    <gmap-marker :key="m.id" v-for="(m, index) in markers" :position="m.position" :clickable="true" :draggable="(index == editingMarker) && editMode" @click="markerClicked(m)">
+                    <gmap-marker :key="m.id" v-for="(m, index) in markers" :position="m.position" :clickable="true" :draggable="(index == editingMarker) && editMode" @click="markerClicked(m)" @dragend="markerDragged(m, $event)">
                         <gmap-info-window :opened="(index == editingMarker) && (generateInfo(index) != '')" :content="generateInfo(index)"></gmap-info-window>
                     </gmap-marker>
                 </gmap-map>
@@ -11,6 +11,9 @@
             <el-col :span="4">
                 <el-switch v-model="editMode" on-text="Просмотр" off-text="Правка" :width="100" @click="editMode = !editMode"></el-switch>
                 <el-form ref="form" v-if="showForm">
+                    <el-form-item>
+                        <span>ID: {{ markers[editingMarker].id }}</span>
+                    </el-form-item>
                     <el-form-item label="Название метки: ">
                         <el-input v-model.trim="markers[editingMarker].title" :disabled="!editMode"></el-input>
                     </el-form-item>
@@ -23,7 +26,6 @@
                 </el-form>
             </el-col>
         </el-row>
-        <button @click="panMap"></button>
     </div>
 </template>
 
@@ -40,13 +42,16 @@
         center: { lat: 56.13222, lng: 47.25194 },
         markers: [],
         editingMarker: -1,
-        lastId: 0,
+        lastId: null,
         showForm: false
       }
     },
     watch: {
-      markers: function (val) {
-        this.$ls.set('markers', val)
+      markers: {
+        handler: function (val, oldVal) {
+          this.$ls.set('markers', val)
+        },
+        deep: true
       },
       lastId: function (val) {
         this.$ls.set('lastId', val)
@@ -54,6 +59,7 @@
     },
     created: function () {
       this.markers = this.$ls.get('markers', [])
+      this.lastId = this.$ls.get('lastId', 0)
       if (!this.markers.length) this.lastId = 0
     },
     mounted: function () {
@@ -66,9 +72,9 @@
     },
     methods: {
       panMap () {
-        var map = this.$refs.map
+        let map = this.$refs.map
         map.$mapCreated.then(() => {
-          var bounds = new google.maps.LatLngBounds()
+          let bounds = new google.maps.LatLngBounds()
           bounds.extend(this.center)
           this.markers.forEach(item => {
             let latlng = new google.maps.LatLng({
@@ -89,10 +95,16 @@
             false
           )
           this.showEditForm(marker.id)
+        } else {
+          console.log(this.markers)
         }
       },
       markerClicked (marker) {
         this.showEditForm(marker.id)
+      },
+      markerDragged (marker, mouseArgs) {
+        this.markers[this.editingMarker].position.lat = mouseArgs.latLng.lat()
+        this.markers[this.editingMarker].position.lng = mouseArgs.latLng.lng()
       },
       addMarker (lat, lng, draggable) {
         this.lastId++
